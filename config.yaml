@@ -1,0 +1,22 @@
+gui:
+  position:
+    x: 1703
+    y: 856
+hotkeys:
+  confirm: f9
+  missed: f10
+  quit: f11
+  start_stop: f8
+overlay:
+  font_size: 16
+  height: 230
+  opacity: 1.0
+  position:
+    x: 10
+    y: 2650
+  width: 320
+rotation:
+  active_roster: my_raid.yaml
+  dark_cooldown_seconds: 30
+  max_throws_per_run: 3
+  warning_seconds: 5
