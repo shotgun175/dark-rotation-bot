@@ -60,6 +60,7 @@ class RotationEngine:
         # Phase-1 (player window) state
         self._player_window_start: float = 0
         self._miss_warned: bool = False
+        self._phase1_warned: bool = False
 
         # Phase-2 (dark window) state
         self._dark_active: bool = False
@@ -246,8 +247,20 @@ class RotationEngine:
                 self._begin_player_window()
 
         else:
-            # ── Phase 1: waiting for F10 confirm ───────────────────────
+            # ── Phase 1: waiting for throw ─────────────────────────────
             elapsed = time.time() - self._player_window_start
+
+            # Warning: alert the *next* player they're about to be called up
+            if not self._phase1_warned and elapsed >= (self.miss_secs - self.warn_secs):
+                self._phase1_warned = True
+                current = self._current_player()
+                next_up = self._next_active_player()
+                if next_up != "Nobody" and next_up != current:
+                    self.on_event("warning", {
+                        "current": current,
+                        "next": next_up,
+                        "seconds": int(self.warn_secs),
+                    })
 
             if not self._miss_warned and elapsed >= self.miss_secs:
                 self._miss_warned = True
@@ -280,6 +293,7 @@ class RotationEngine:
 
         self._player_window_start = time.time()
         self._miss_warned = False
+        self._phase1_warned = False
         player = self._current_player()
         self.on_event("announce", {
             "player": player,

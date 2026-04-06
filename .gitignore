@@ -8,6 +8,8 @@ __pycache__/
 build/
 dist/
 *.spec
+*.exe
 venv/
 .venv/
 clear_icon_cache.bat
+tts_samples/

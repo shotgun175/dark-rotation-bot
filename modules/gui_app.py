@@ -15,6 +15,7 @@ from modules.tabs.roster_tab import RosterTab
 from modules.tabs.rotation_tab import RotationTab
 from modules.tabs.hotkeys_tab import HotkeysTab
 from modules.tabs.overlay_tab import OverlayTab
+from modules.tabs.audio_tab import AudioTab
 from modules.roster import RosterManager
 
 import sys as _sys
@@ -35,6 +36,8 @@ class ConfigApp(QMainWindow):
         self._overlay_win = None
         self._preview_overlay = None
         self._detection_engine = None
+        self._audio_mgr = None
+        self._last_confirm_source = "hotkey"   # "hotkey" or "detection"
 
         self.setWindowTitle("Dark Rotation Bot")
         gui_pos = self._config.get("gui", {}).get("position", {})
@@ -108,9 +111,13 @@ class ConfigApp(QMainWindow):
         self._overlay_tab.preview_requested.connect(self._handle_preview)
         self._overlay_tab.region_selector_requested.connect(self._handle_region_selector)
 
+        self._audio_tab = AudioTab(self._config)
+        self._audio_tab.test_requested.connect(self._handle_audio_test)
+
         self._tabs.addTab(self._roster_tab,   "Roster")
         self._tabs.addTab(self._rotation_tab, "Rotation")
         self._tabs.addTab(self._hotkeys_tab,  "Hotkeys")
+        self._tabs.addTab(self._audio_tab,    "Audio")
         self._tabs.addTab(self._overlay_tab,  "Overlay")
         root.addWidget(self._tabs)
         root.addWidget(self._build_bottom_bar())
@@ -198,6 +205,12 @@ class ConfigApp(QMainWindow):
         if self._detection_engine:
             self._detection_engine.update_config(self._config)
 
+        audio_vals = self._audio_tab.get_values()
+        self._config["audio"] = audio_vals
+        if self._audio_mgr:
+            players = self._roster_tab.get_players()
+            self._audio_mgr.update_config(self._config, players)
+
         # Save to disk
         self._save_config()
 
@@ -258,6 +271,7 @@ class ConfigApp(QMainWindow):
             self._config.get("overlay", {}),
             get_status_fn=self._engine.get_status,
             save_position_callback=self._on_overlay_moved,
+            stop_callback=self._handle_overlay_stop,
         )
         self._overlay_win.start()
 
@@ -271,9 +285,10 @@ class ConfigApp(QMainWindow):
             },
         )
         self._hotkeys_mgr.start()
-        self._engine.start()
+        # Engine is NOT started here — user presses F8 when ready.
+        # This gives pre-render time to finish so the first announce plays.
 
-        # Start auto-detection if enabled
+        # Start auto-detection if enabled (paused until engine starts via F8)
         if self._config.get("detection", {}).get("enabled", False):
             from modules.detection import DetectionEngine
             self._detection_engine = DetectionEngine(
@@ -281,6 +296,13 @@ class ConfigApp(QMainWindow):
                 on_detected=self._on_grenade_detected,
             )
             self._detection_engine.start()
+            self._detection_engine.pause()
+
+        # Start audio manager and kick off pre-render in background
+        if self._config.get("audio", {}).get("enabled", True):
+            from modules.audio import AudioManager
+            self._audio_mgr = AudioManager(self._config)
+            self._audio_mgr.prerender(players)
 
         self._bot_running = True
         self._launch_btn.setText("■  Stop")
@@ -288,9 +310,10 @@ class ConfigApp(QMainWindow):
             "background: #4a1a1a; color: #ff4444; border: none; "
             "padding: 5px 16px; font-family: Consolas; font-size: 14px; font-weight: bold;"
         )
-        self._status_dot.setStyleSheet("color: #44ff88; font-size: 16px;")
-        self._status_text.setText("Running")
-        self._status_text.setStyleSheet("color: #44ff88; font-size: 14px;")
+        self._status_dot.setStyleSheet("color: #ffaa00; font-size: 16px;")
+        self._status_text.setText("Armed  —  press F8 to start")
+        self._status_text.setStyleSheet("color: #ffaa00; font-size: 14px;")
+        self.hide()
 
     def _stop_bot(self):
         if self._engine:
@@ -301,11 +324,14 @@ class ConfigApp(QMainWindow):
             self._overlay_win.stop()
         if self._detection_engine:
             self._detection_engine.stop()
+        if self._audio_mgr:
+            self._audio_mgr.shutdown()
 
         self._engine            = None
         self._hotkeys_mgr       = None
         self._overlay_win       = None
         self._detection_engine  = None
+        self._audio_mgr         = None
         self._bot_running       = False
 
         self._launch_btn.setText("▶  Launch")
@@ -316,6 +342,13 @@ class ConfigApp(QMainWindow):
         self._status_dot.setStyleSheet("color: #777; font-size: 16px;")
         self._status_text.setText("Bot not running")
         self._status_text.setStyleSheet("color: #999; font-size: 14px;")
+
+    def _handle_overlay_stop(self):
+        """Called from the overlay's stop button — tears down the bot and shows the GUI."""
+        self._stop_bot()
+        self.show()
+        self.raise_()
+        self.activateWindow()
 
     # ------------------------------------------------------------------
     # Hotkey callbacks
@@ -328,9 +361,15 @@ class ConfigApp(QMainWindow):
                 self._engine.stop()
             else:
                 self._engine.start()
+                if self._detection_engine:
+                    self._detection_engine.resume()
+                self._status_dot.setStyleSheet("color: #44ff88; font-size: 16px;")
+                self._status_text.setText("Running")
+                self._status_text.setStyleSheet("color: #44ff88; font-size: 14px;")
 
     def _hotkey_confirm(self):
         if self._engine:
+            self._last_confirm_source = "hotkey"
             status = self._engine.get_status()
             player = status.get("current_player", "Unknown")
             self._engine.on_dark_detected(player, is_splendid=False)
@@ -347,6 +386,7 @@ class ConfigApp(QMainWindow):
         """Called from DetectionEngine background thread when icon is matched."""
         if not self._engine:
             return
+        self._last_confirm_source = "detection"
         status = self._engine.get_status()
         player = status.get("current_player", "Unknown")
         kind = "Splendid Dark" if is_splendid else "Dark"
@@ -384,10 +424,34 @@ class ConfigApp(QMainWindow):
             elif event_type in ("announce", "missed", "cooldown_skip"):
                 self._detection_engine.resume()
 
+        # Audio cues
+        if self._audio_mgr:
+            if event_type == "confirmed":
+                if self._last_confirm_source == "detection":
+                    self._audio_mgr.play_chime()
+                else:
+                    self._audio_mgr.play_event("confirmed", data)
+                self._last_confirm_source = "hotkey"   # reset
+            else:
+                self._audio_mgr.play_event(event_type, data)
+
     # ------------------------------------------------------------------
     # ------------------------------------------------------------------
     # Detection region selector
     # ------------------------------------------------------------------
+
+    def _handle_audio_test(self):
+        """Play a sample TTS line for the currently selected voice."""
+        from modules.audio import AudioManager
+        # Use a temporary manager with the current (unsaved) tab values
+        test_config = dict(self._config)
+        test_config["audio"] = self._audio_tab.get_values()
+        if self._audio_mgr:
+            self._audio_mgr.update_config(test_config)
+            self._audio_mgr.play_test()
+        else:
+            tmp = AudioManager(test_config)
+            tmp.play_test()
 
     def _handle_region_selector(self):
         from modules.region_selector import RegionSelectorWindow

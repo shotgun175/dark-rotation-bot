@@ -1,3 +1,13 @@
+audio:
+  cues:
+    announce: true
+    chime: true
+    confirmed: false
+    rotation_complete: true
+    warning: true
+  enabled: true
+  voice: Jenny
+  volume: 0.8
 detection:
   enabled: true
   height: 35
@@ -8,8 +18,8 @@ detection:
   width: 281
 gui:
   position:
-    x: 171
-    y: 802
+    x: 1
+    y: 809
 hotkeys:
   confirm: f9
   missed: f10

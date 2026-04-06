@@ -50,19 +50,7 @@ python gui.py
 ```
 
 Edit your roster, hotkeys, and settings from the GUI. Click **Apply** to save,
-then **▶ Launch** to start the bot.
-
----
-
-## Running headlessly (no GUI)
-
-If you prefer to run from the terminal without the config window:
-
-```bash
-python main.py
-```
-
-Edit `config.yaml` and `rosters/my_raid.yaml` manually before running.
+then **▶ Launch** to arm the bot (overlay appears, audio pre-renders), then press **F8** to start the rotation.
 
 ---
 
@@ -81,8 +69,8 @@ Rebind any key in the GUI under the **Hotkeys** tab, or directly in `config.yaml
 
 ## How it works
 
-1. Press **F8** (or click **▶ Launch** in the GUI) to start the rotation
-2. The overlay announces the first player
+1. Click **▶ Launch** — the GUI hides, the overlay appears, and audio clips are pre-rendered in the background
+2. Press **F8** when you're ready — the rotation starts and the first player is announced
 3. **Phase 1 — Player window (20 s):**
    - Press **F9** when the player throws their dark grenade
    - If no confirm within 20 s, the bot fires a miss event automatically
@@ -130,11 +118,11 @@ To create a double-clickable executable (no terminal, no Python required):
 
 ```bash
 pip install pyinstaller
-pyinstaller --noconsole --onefile --icon=assets/icon.ico --name="Dark Timer" gui.py
+pyinstaller --noconsole --onefile --icon=assets/icon.ico --name="Dark Timer" --clean --hidden-import=edge_tts --hidden-import=aiohttp gui.py
 ```
 
-Output: `Dark Timer.exe` (PyInstaller places it in `dist/Dark Timer.exe` — move it to the project root). Re-run this command any time you update the code.
-`config.yaml` and `rosters/` stay as live files next to the `.exe`.
+Output: `dist/Dark Timer.exe` — move it to the project root. Re-run this command any time you update the code.
+`config.yaml`, `rosters/`, and `assets/` stay as live files next to the `.exe`.
 
 ---
 
@@ -152,6 +140,22 @@ MIT
 ---
 
 ## Changelog
+
+### v1.3.2
+- **Audio cue system:** TTS voice callouts via Microsoft Edge neural voices (Andrew / Jenny selectable in Audio tab). Announces the current player's name, warns the next player, confirms throws, and plays an optional chime on auto-detection
+- **Audio tab:** New GUI tab with master enable toggle, per-cue checkboxes (announce, warning, confirmed, rotation complete, chime), voice selector, volume slider, and Test Voice button. All options gray out visually when audio is disabled
+- **Phase 1 warning:** `[Player], get ready` now fires 5 seconds before a player's window closes — even if no dark was confirmed — so the next player always gets a heads-up
+- **Launch / F8 split:** Clicking **▶ Launch** arms the bot (overlay shows, audio pre-renders) but does not start the timer. Press **F8** when ready — audio clips are guaranteed loaded by then, so the first announce always plays
+- **GUI hides on Launch:** Config window disappears when the bot is armed, freeing screen space and preventing accidental roster resets. A **■** stop button in the top-right of the overlay tears down the bot and restores the GUI
+- **Tab reorder:** Audio tab moved before Overlay tab
+- **Removed:** "Dark missed" TTS cue (F10 advances the rotation silently)
+- **Cleanup:** Removed legacy `main.py` headless entry point; removed unused `mutagen` dependency
+
+### v1.3.1
+- **Throw counts on overlay:** player names now show their throw count inline (e.g. `Valslayer  1/3`, `Mabi  0/3`)
+- **Spam protection:** duplicate confirms are ignored while the dark buff is active — throw count can no longer exceed the cap
+- **Window icon:** title bar and taskbar now show the grenade icon at runtime
+- **Taskbar fix:** app registers its own Windows App User Model ID so it gets a dedicated taskbar button instead of grouping under Python
 
 ### v1.3.0
 - **Overlay tab redesign:** single scrollable left column replaces the fixed right panel — controls never clip or stretch as the window is resized

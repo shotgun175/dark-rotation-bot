@@ -2,7 +2,7 @@
 overlay.py - Always-on-top countdown and rotation display (PyQt5)
 """
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFrame
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton
 from PyQt5.QtCore import Qt, QTimer, QPoint
 from PyQt5.QtGui import QFont
 
@@ -18,11 +18,13 @@ BAR_CRITICAL   = "#ff4444"
 
 
 class OverlayWindow(QWidget):
-    def __init__(self, config: dict, get_status_fn=None, save_position_callback=None):
+    def __init__(self, config: dict, get_status_fn=None, save_position_callback=None,
+                 stop_callback=None):
         super().__init__()
         self.config = config
         self.get_status = get_status_fn
         self.save_position_callback = save_position_callback
+        self.stop_callback = stop_callback
         self.font_size = config.get("font_size", 16)
 
         pos = config.get("position", {"x": 0, "y": 0})
@@ -53,8 +55,24 @@ class OverlayWindow(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(2)
 
+        # Header row: state label left, stop button right
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(0, 0, 0, 0)
         self._lbl_state = self._label("IDLE", fs - 4, TEXT_SECONDARY)
-        layout.addWidget(self._lbl_state)
+        header_row.addWidget(self._lbl_state)
+        header_row.addStretch()
+        self._stop_btn = QPushButton("■")
+        self._stop_btn.setFixedSize(22, 22)
+        self._stop_btn.setToolTip("Stop bot")
+        self._stop_btn.setStyleSheet(
+            "QPushButton { color: #ff4444; background: transparent; border: 1px solid #444;"
+            " font-size: 11px; font-family: Consolas; border-radius: 3px; }"
+            "QPushButton:hover { background: #3a1a1a; border-color: #ff4444; }"
+        )
+        self._stop_btn.clicked.connect(self._on_stop_clicked)
+        self._stop_btn.setVisible(self.stop_callback is not None)
+        header_row.addWidget(self._stop_btn)
+        layout.addLayout(header_row)
 
         self._lbl_current_label = self._label("DARK NOW", fs - 4, TEXT_SECONDARY)
         layout.addWidget(self._lbl_current_label)
@@ -99,6 +117,10 @@ class OverlayWindow(QWidget):
     # ------------------------------------------------------------------
     # Public API (matches old tkinter interface)
     # ------------------------------------------------------------------
+
+    def _on_stop_clicked(self):
+        if self.stop_callback:
+            self.stop_callback()
 
     def start(self):
         self.show()
