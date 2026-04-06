@@ -29,7 +29,7 @@ jobs:
           --noconsole
           --onefile
           --icon=assets/icon.ico
-          --name="Dark Timer"
+          --name="Dark Rotation Manager"
           --clean
           --hidden-import=edge_tts
           --hidden-import=aiohttp
@@ -38,7 +38,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/Dark Timer.exe
+          files: dist/Dark Rotation Manager.exe
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

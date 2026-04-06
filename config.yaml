@@ -18,8 +18,8 @@ detection:
   width: 281
 gui:
   position:
-    x: 1
-    y: 809
+    x: 7
+    y: 842
 hotkeys:
   confirm: f9
   missed: f10

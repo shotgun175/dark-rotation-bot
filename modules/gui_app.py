@@ -39,7 +39,7 @@ class ConfigApp(QMainWindow):
         self._audio_mgr = None
         self._last_confirm_source = "hotkey"   # "hotkey" or "detection"
 
-        self.setWindowTitle("Dark Rotation Bot")
+        self.setWindowTitle("Dark Rotation Manager")
         gui_pos = self._config.get("gui", {}).get("position", {})
         self.resize(800, 500)
         self.setMaximumSize(1050, 680)

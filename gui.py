@@ -1,5 +1,5 @@
 """
-gui.py - Dark Rotation Bot GUI entry point
+gui.py - Dark Rotation Manager GUI entry point
 
 Usage:
     python gui.py

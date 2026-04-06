@@ -1,4 +1,4 @@
-# Dark Rotation Bot
+# Dark Rotation Manager
 
 Tracks and announces the Lost Ark dark grenade rotation with an always-on-top
 overlay and configurable hotkeys. Confirms throws manually via hotkey.
@@ -33,8 +33,8 @@ overlay and configurable hotkeys. Confirms throws manually via hotkey.
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/dark-rotation-bot.git
-cd dark-rotation-bot
+git clone https://github.com/YOUR_USERNAME/Dark-Rotation-Manager.git
+cd Dark-Rotation-Manager
 ```
 
 ### 2. Install dependencies
@@ -140,6 +140,10 @@ MIT
 ---
 
 ## Changelog
+
+### v1.0.13 - Rename to Dark Rotation Manager
+- Project renamed from **Dark Rotation Bot** to **Dark Rotation Manager**
+- Exe and window title updated to match
 
 ### v1.0.12 - Audio cue system, GUI hide on launch, overlay stop button
 - **Audio cue system:** TTS voice callouts via Microsoft Edge neural voices (Andrew / Jenny selectable in Audio tab). Announces the current player's name, warns the next player, confirms throws, and plays an optional chime on auto-detection
