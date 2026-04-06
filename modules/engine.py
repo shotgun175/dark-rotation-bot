@@ -136,6 +136,8 @@ class RotationEngine:
         """Called when a dark grenade throw is confirmed (via hotkey)."""
         if self.state != RotationState.RUNNING:
             return
+        if self._dark_active:
+            return  # buff already running — ignore duplicate confirms
 
         duration = 25 if is_splendid else 20
         self.throw_history.append(ThrowEvent(
@@ -359,10 +361,16 @@ class RotationEngine:
             current_display = self._current_player()
             next_display    = self._next_active_player()
 
+        def _count(name: str) -> str:
+            c = self._throw_counts.get(name.lower(), 0)
+            return f"{c}/{self.max_throws}"
+
         return {
             "state": self.state.name,
             "current_player": current_display,
             "next_player": next_display,
+            "current_count": _count(current_display),
+            "next_count": _count(next_display),
             "remaining_seconds": remaining,
             "window_duration": duration,
             "dark_active": self._dark_active,

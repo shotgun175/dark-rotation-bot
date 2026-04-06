@@ -130,8 +130,14 @@ class OverlayWindow(QWidget):
 
     def _render(self, status: dict):
         self._lbl_state.setText(status.get("state", "IDLE"))
-        self._lbl_current.setText(status.get("current_player", "—"))
-        self._lbl_next.setText(status.get("next_player", "—"))
+
+        current = status.get("current_player", "—")
+        current_count = status.get("current_count", "")
+        self._lbl_current.setText(f"{current}  {current_count}" if current_count else current)
+
+        next_p = status.get("next_player", "—")
+        next_count = status.get("next_count", "")
+        self._lbl_next.setText(f"{next_p}  {next_count}" if next_count else next_p)
         remaining = status.get("remaining_seconds", 0.0)
         duration = status.get("window_duration", 20)
         self._lbl_timer.setText(f"{remaining:.1f}s")
