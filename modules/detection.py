@@ -1,0 +1,179 @@
+"""
+detection.py - Auto-detects dark grenade debuff on the boss HP bar using
+OpenCV template matching. Runs in a background thread alongside the engine.
+
+Finds the Lost Ark window automatically (works on any monitor setup) and
+scans a small relative region for the dark grenade / splendid dark grenade
+debuff icon. When detected, calls on_detected(is_splendid) on the main
+rotation engine.
+"""
+
+import os
+import time
+import threading
+
+import cv2
+import numpy as np
+import mss
+
+import sys as _sys
+BASE_DIR = os.path.dirname(_sys.executable) if getattr(_sys, "frozen", False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEMPLATE_DIR = os.path.join(BASE_DIR, "assets", "templates")
+
+DARK_TEMPLATE_PATH      = os.path.join(TEMPLATE_DIR, "dark_grenade.png")
+SPLENDID_TEMPLATE_PATH  = os.path.join(TEMPLATE_DIR, "splendid_dark_grenade.png")
+
+LOSTARK_WINDOW_TITLE = "LOST ARK"
+
+
+def _find_lostark_window():
+    """Return (left, top) of the Lost Ark window client area, or None."""
+    try:
+        import win32gui
+        import win32con
+
+        def _cb(hwnd, results):
+            if win32gui.IsWindowVisible(hwnd):
+                title = win32gui.GetWindowText(hwnd)
+                if LOSTARK_WINDOW_TITLE.lower() in title.lower():
+                    rect = win32gui.GetClientRect(hwnd)
+                    pt = win32gui.ClientToScreen(hwnd, (rect[0], rect[1]))
+                    results.append(pt)
+
+        found = []
+        win32gui.EnumWindows(_cb, found)
+        return found[0] if found else None
+    except Exception as e:
+        print(f"[Detection] Window find error: {e}")
+        return None
+
+
+class DetectionEngine:
+    def __init__(self, config: dict, on_detected):
+        """
+        config       — full app config dict
+        on_detected  — callable(is_splendid: bool) called on match
+        """
+        self._config = config
+        self._on_detected = on_detected
+        self._load_config()
+
+        self._running = False
+        self._paused = False
+        self._thread: threading.Thread | None = None
+        self._stop_event = threading.Event()
+
+        self._dark_tmpl     = self._load_template(DARK_TEMPLATE_PATH)
+        self._splendid_tmpl = self._load_template(SPLENDID_TEMPLATE_PATH)
+
+        if self._dark_tmpl is None:
+            print(f"[Detection] WARNING: dark_grenade.png not found at {DARK_TEMPLATE_PATH}")
+        if self._splendid_tmpl is None:
+            print(f"[Detection] WARNING: splendid_dark_grenade.png not found at {SPLENDID_TEMPLATE_PATH}")
+
+    def _load_config(self):
+        det = self._config.get("detection", {})
+        self.rel_x          = det.get("rel_x", 875)
+        self.rel_y          = det.get("rel_y", 325)
+        self.width          = det.get("width", 456)
+        self.height         = det.get("height", 46)
+        self.threshold      = det.get("threshold", 0.75)
+        self.scan_interval  = det.get("scan_interval_ms", 500) / 1000.0
+
+    def _load_template(self, path: str):
+        if not os.path.exists(path):
+            return None
+        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        return img
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def start(self):
+        if self._running:
+            return
+        if self._dark_tmpl is None or self._splendid_tmpl is None:
+            print("[Detection] Cannot start — template images missing.")
+            return
+        self._running = True
+        self._paused = False
+        self._stop_event.clear()
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
+        print("[Detection] Started.")
+
+    def stop(self):
+        self._running = False
+        self._stop_event.set()
+        print("[Detection] Stopped.")
+
+    def pause(self):
+        """Call while dark buff is active — no need to scan."""
+        self._paused = True
+
+    def resume(self):
+        """Call when next player window starts."""
+        self._paused = False
+
+    def update_config(self, config: dict):
+        self._config = config
+        self._load_config()
+
+    # ------------------------------------------------------------------
+    # Detection loop
+    # ------------------------------------------------------------------
+
+    def _loop(self):
+        with mss.mss() as sct:
+            while not self._stop_event.is_set():
+                if not self._paused:
+                    try:
+                        self._scan(sct)
+                    except Exception as e:
+                        print(f"[Detection] Scan error: {e}")
+                time.sleep(self.scan_interval)
+
+    def _scan(self, sct):
+        win_pos = _find_lostark_window()
+        if win_pos is None:
+            return  # Lost Ark not running/visible — silently skip
+
+        win_x, win_y = win_pos
+        region = {
+            "left":   win_x + self.rel_x,
+            "top":    win_y + self.rel_y,
+            "width":  self.width,
+            "height": self.height,
+        }
+
+        shot = sct.grab(region)
+        frame = np.array(shot)
+        gray  = cv2.cvtColor(frame, cv2.COLOR_BGRA2GRAY)
+
+        # Check splendid first (more specific match wins)
+        if self._match(gray, self._splendid_tmpl):
+            print("[Detection] Splendid Dark Grenade detected!")
+            self._paused = True   # stop scanning until resumed
+            self._on_detected(is_splendid=True)
+            return
+
+        if self._match(gray, self._dark_tmpl):
+            print("[Detection] Dark Grenade detected!")
+            self._paused = True
+            self._on_detected(is_splendid=False)
+
+    def _match(self, frame_gray: np.ndarray, template: np.ndarray) -> bool:
+        if template is None:
+            return False
+        # Template must be smaller than the region
+        fh, fw = frame_gray.shape[:2]
+        th, tw = template.shape[:2]
+        if th > fh or tw > fw:
+            # Scale template down to fit if needed
+            scale = min(fh / th, fw / tw) * 0.9
+            template = cv2.resize(template, (int(tw * scale), int(th * scale)))
+
+        result = cv2.matchTemplate(frame_gray, template, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, _ = cv2.minMaxLoc(result)
+        return max_val >= self.threshold

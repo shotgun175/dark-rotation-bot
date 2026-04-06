@@ -10,7 +10,8 @@ import os
 from PyQt5.QtWidgets import QApplication
 from modules.gui_app import ConfigApp
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# When frozen as .exe, use the exe's directory. When running as script, use this file's directory.
+BASE_DIR = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
 
 
 def main():

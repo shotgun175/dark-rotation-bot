@@ -1,7 +1,15 @@
+detection:
+  enabled: true
+  height: 35
+  rel_x: 1246
+  rel_y: 329
+  scan_interval_ms: 500
+  threshold: 0.75
+  width: 281
 gui:
   position:
-    x: 1703
-    y: 856
+    x: 257
+    y: 774
 hotkeys:
   confirm: f9
   missed: f10

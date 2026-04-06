@@ -66,6 +66,7 @@ class RotationEngine:
         self._dark_start: float = 0
         self._dark_duration: int = 20
         self._dark_warned: bool = False   # warning callout during dark countdown
+        self._dark_player: str = ""       # who threw the dark (shown on overlay during buff)
 
     # ------------------------------------------------------------------
     # Public API
@@ -171,6 +172,7 @@ class RotationEngine:
         # A dark is now active regardless of who threw it.
         # Advance past the current expected slot and start the buff countdown.
         # The next player is NOT announced until the buff expires.
+        self._dark_player = player        # remember thrower for overlay display
         self._advance()
         self._dark_active = True
         self._dark_start = time.time()
@@ -348,10 +350,19 @@ class RotationEngine:
             remaining = 0.0
             duration = self.miss_secs
 
+        # During the buff countdown keep the thrower on "DARK NOW"
+        # and show the upcoming player as "NEXT".
+        if self._dark_active:
+            current_display = self._dark_player or self._current_player()
+            next_display    = self._current_player()
+        else:
+            current_display = self._current_player()
+            next_display    = self._next_active_player()
+
         return {
             "state": self.state.name,
-            "current_player": self._current_player(),
-            "next_player": self._next_active_player(),
+            "current_player": current_display,
+            "next_player": next_display,
             "remaining_seconds": remaining,
             "window_duration": duration,
             "dark_active": self._dark_active,

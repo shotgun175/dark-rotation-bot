@@ -14,11 +14,11 @@ ACTIONS = [
 ]
 
 _STYLE_NORMAL   = ("background: #111; color: #ffd700; border: 1px solid #444; "
-                   "padding: 5px; font-family: Consolas; font-size: 13px; font-weight: bold;")
+                   "padding: 5px; font-family: Consolas; font-size: 14px; font-weight: bold;")
 _STYLE_LISTEN   = ("background: #1a3a1a; color: #44ff88; border: 1px solid #44ff88; "
-                   "padding: 5px; font-family: Consolas; font-size: 13px; font-weight: bold;")
+                   "padding: 5px; font-family: Consolas; font-size: 14px; font-weight: bold;")
 _STYLE_CONFLICT = ("background: #3a1a1a; color: #ff4444; border: 1px solid #ff4444; "
-                   "padding: 5px; font-family: Consolas; font-size: 13px; font-weight: bold;")
+                   "padding: 5px; font-family: Consolas; font-size: 14px; font-weight: bold;")
 
 _ROW_NORMAL  = "background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 3px;"
 _ROW_LISTEN  = "background: #1a2a1a; border: 1px solid #3a4a3a; border-radius: 3px;"
@@ -46,9 +46,9 @@ class HotkeysTab(QWidget):
 
             text_col = QVBoxLayout()
             lbl = QLabel(label)
-            lbl.setStyleSheet("color: #fff; font-size: 11px; font-family: Consolas;")
+            lbl.setStyleSheet("color: #fff; font-size: 14px; font-family: Consolas;")
             hint_lbl = QLabel(hint)
-            hint_lbl.setStyleSheet("color: #555; font-size: 9px; font-family: Consolas;")
+            hint_lbl.setStyleSheet("color: #888; font-size: 14px; font-family: Consolas;")
             text_col.addWidget(lbl)
             text_col.addWidget(hint_lbl)
             row_layout.addLayout(text_col)
@@ -65,7 +65,7 @@ class HotkeysTab(QWidget):
 
         layout.addStretch()
         footer = QLabel("Click a key badge to rebind. Press Escape to cancel.")
-        footer.setStyleSheet("color: #555; font-size: 11px; font-family: Consolas;")
+        footer.setStyleSheet("color: #888; font-size: 14px; font-family: Consolas;")
         layout.addWidget(footer)
 
     def _start_listen(self, action: str):

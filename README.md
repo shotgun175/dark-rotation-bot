@@ -15,6 +15,9 @@ overlay and configurable hotkeys. Confirms throws manually via hotkey.
 - PyQt5 GUI for editing roster, rotation settings, hotkeys, and overlay — live while the bot is running
 - Overlay position saves automatically when dragged; restores on next launch
 - GUI window position also saves and restores on next launch
+- Optional OpenCV auto-detection: scans boss debuff bar for Dark / Splendid Dark Grenade icon and auto-confirms with correct timer (20s / 25s)
+- Detection region configurable via manual spinboxes or drag-to-draw tool in the Overlay tab
+- `Dark Timer.exe` ships with the Splendid Dark Grenade as its icon
 
 ---
 
@@ -127,10 +130,10 @@ To create a double-clickable executable (no terminal, no Python required):
 
 ```bash
 pip install pyinstaller
-pyinstaller --noconsole --onefile gui.py
+pyinstaller --noconsole --onefile --icon=assets/icon.ico --name="Dark Timer" gui.py
 ```
 
-Output: `gui.exe` (PyInstaller places it in `dist/gui.exe` — move it to the project root). Re-run this command any time you update the code.
+Output: `Dark Timer.exe` (PyInstaller places it in `dist/Dark Timer.exe` — move it to the project root). Re-run this command any time you update the code.
 `config.yaml` and `rosters/` stay as live files next to the `.exe`.
 
 ---
@@ -145,3 +148,41 @@ Change `active_roster` in `config.yaml` (or via the GUI) to switch between them.
 ## License
 
 MIT
+
+---
+
+## Changelog
+
+### v1.3.0
+- **Overlay tab redesign:** single scrollable left column replaces the fixed right panel — controls never clip or stretch as the window is resized
+- **Appearance preview moved inline:** sits next to the Position/Size spinboxes; Region preview sits next to the detection region controls
+- **Window resize cap:** maximum window size capped at 1050×680 to prevent excessive stretching
+- **Text contrast pass:** all gray text lifted across every tab (`#444`→`#777`, `#555`→`#888`, `#666`→`#999`, `#aaa`→`#ccc`)
+- **Font size pass:** UI-wide bump (9px→11px, 11px→13px, 13px→14px); spinboxes now render at 14px
+- **Auto-detection card:** checkbox is wrapped in a styled card with a gold indicator when enabled — much easier to notice and toggle
+- **Buff display fix:** "DARK NOW" stays on the thrower (e.g. Valslayer) for the full 20/25s buff countdown, with the next player shown as "NEXT"; the overlay only switches to the next player when the buff expires
+- **Renamed executable:** `gui.exe` → `Dark Timer.exe`
+
+### v1.2.0
+- **Detection region spinboxes:** X, Y, W, H inputs in the Overlay tab let you set the debuff scan region manually — no tool required
+- **"Draw Region on Screen" button:** Drag a box over the debuff strip and the spinboxes fill automatically; hit Apply to save
+- **gui.exe icon:** Now uses the Splendid Dark Grenade image as the application icon
+- **Frozen path fix:** `gui.exe` now correctly finds `config.yaml` and `rosters/` next to the executable on any machine
+
+### v1.1.0
+- **Auto-detection:** Optional OpenCV-based grenade detection scans the boss debuff bar automatically. When the Dark Grenade or Splendid Dark Grenade icon is detected, the timer starts at 20s or 25s respectively — no manual confirm needed.
+- **Visual region selector:** "Set Detection Region" button in the Overlay tab opens a full-screen drag-to-select tool. Draw a box over the boss debuff strip and coordinates are saved automatically, relative to the Lost Ark window (works on any monitor setup).
+- **Lost Ark window auto-detection:** Detection coordinates are stored relative to the Lost Ark window position via `pywin32`, so they remain correct regardless of which monitor the game is on.
+- **Auto-detection toggle:** Enable/disable in the Overlay tab — off by default so it doesn't affect performance on weaker machines.
+- Manual F9 confirm and F10 miss still work at all times as fallback.
+- New dependencies: `opencv-python`, `pywin32`, `mss`
+
+### v1.0.0
+- Initial release
+- PyQt5 tabbed config GUI (Roster, Rotation, Hotkeys, Overlay)
+- Always-on-top overlay HUD with countdown bar
+- Live Apply: push config changes to running bot without restart
+- Overlay and GUI window positions auto-save on drag/move
+- Hotkey rebinding via click-to-capture UI
+- Headless terminal mode via `main.py`
+- Standalone `gui.exe` build

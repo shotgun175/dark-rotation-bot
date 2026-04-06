@@ -40,7 +40,7 @@ class RotationTab(QWidget):
     def _field(self, parent: QVBoxLayout, label: str, value: int,
                min_v: int, max_v: int, hint: str) -> QSpinBox:
         lbl = QLabel(label)
-        lbl.setStyleSheet("color: #aaa; font-size: 13px;")
+        lbl.setStyleSheet("color: #ccc; font-size: 14px;")
         parent.addWidget(lbl)
 
         row = QHBoxLayout()
@@ -49,12 +49,12 @@ class RotationTab(QWidget):
         spin.setValue(value)
         spin.setStyleSheet(
             "background: #1a1a1a; color: #fff; border: 1px solid #333; "
-            "padding: 4px 8px; min-width: 60px; font-family: Consolas;"
+            "padding: 4px 8px; min-width: 60px; font-family: Consolas; font-size: 14px;"
         )
         row.addWidget(spin)
 
         hint_lbl = QLabel(hint)
-        hint_lbl.setStyleSheet("color: #555; font-size: 13px;")
+        hint_lbl.setStyleSheet("color: #888; font-size: 14px;")
         hint_lbl.setWordWrap(True)
         row.addWidget(hint_lbl, stretch=1)
         parent.addLayout(row)

@@ -17,7 +17,8 @@ from modules.tabs.hotkeys_tab import HotkeysTab
 from modules.tabs.overlay_tab import OverlayTab
 from modules.roster import RosterManager
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import sys as _sys
+BASE_DIR = os.path.dirname(_sys.executable) if getattr(_sys, "frozen", False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class ConfigApp(QMainWindow):
@@ -33,10 +34,12 @@ class ConfigApp(QMainWindow):
         self._hotkeys_mgr = None
         self._overlay_win = None
         self._preview_overlay = None
+        self._detection_engine = None
 
         self.setWindowTitle("Dark Rotation Bot")
         gui_pos = self._config.get("gui", {}).get("position", {})
         self.resize(800, 500)
+        self.setMaximumSize(1050, 680)
         if gui_pos:
             self.move(gui_pos.get("x", 100), gui_pos.get("y", 100))
         self.setStyleSheet(
@@ -103,6 +106,7 @@ class ConfigApp(QMainWindow):
         self._hotkeys_tab  = HotkeysTab(self._config)
         self._overlay_tab  = OverlayTab(self._config)
         self._overlay_tab.preview_requested.connect(self._handle_preview)
+        self._overlay_tab.region_selector_requested.connect(self._handle_region_selector)
 
         self._tabs.addTab(self._roster_tab,   "Roster")
         self._tabs.addTab(self._rotation_tab, "Rotation")
@@ -120,21 +124,21 @@ class ConfigApp(QMainWindow):
         layout.setSpacing(8)
 
         self._status_dot  = QLabel("●")
-        self._status_dot.setStyleSheet("color: #444; font-size: 16px;")
+        self._status_dot.setStyleSheet("color: #777; font-size: 16px;")
         self._status_text = QLabel("Bot not running")
-        self._status_text.setStyleSheet("color: #666; font-size: 13px;")
+        self._status_text.setStyleSheet("color: #999; font-size: 14px;")
 
         self._apply_btn = QPushButton("Apply")
         self._apply_btn.setStyleSheet(
-            "color: #aaa; background: transparent; border: 1px solid #333; "
-            "padding: 4px 14px; font-family: Consolas; font-size: 13px;"
+            "color: #ccc; background: transparent; border: 1px solid #333; "
+            "padding: 4px 14px; font-family: Consolas; font-size: 14px;"
         )
         self._apply_btn.clicked.connect(self._apply)
 
         self._launch_btn = QPushButton("▶  Launch")
         self._launch_btn.setStyleSheet(
             "background: #1a4a1a; color: #44ff88; border: none; "
-            "padding: 5px 16px; font-family: Consolas; font-size: 13px; font-weight: bold;"
+            "padding: 5px 16px; font-family: Consolas; font-size: 14px; font-weight: bold;"
         )
         self._launch_btn.clicked.connect(self._toggle_bot)
 
@@ -175,7 +179,7 @@ class ConfigApp(QMainWindow):
     def _apply(self):
         if self._hotkeys_tab.has_conflicts():
             self._status_text.setText("Fix duplicate hotkeys before applying")
-            self._status_text.setStyleSheet("color: #ff4444; font-size: 13px;")
+            self._status_text.setStyleSheet("color: #ff4444; font-size: 14px;")
             return
 
         # Gather values from all tabs
@@ -188,6 +192,11 @@ class ConfigApp(QMainWindow):
         self._config.setdefault("rotation", {}).update(rot_vals)
         self._config["overlay"] = ov_vals
         self._config["hotkeys"] = hk_vals
+        det_region = self._overlay_tab.get_detection_region()
+        self._config.setdefault("detection", {}).update(det_region)
+        self._config["detection"]["enabled"] = self._overlay_tab.get_detection_enabled()
+        if self._detection_engine:
+            self._detection_engine.update_config(self._config)
 
         # Save to disk
         self._save_config()
@@ -220,7 +229,7 @@ class ConfigApp(QMainWindow):
         self._apply_btn.setEnabled(True)
         self._apply_btn.setText("Apply")
         if not self._bot_running:
-            self._status_text.setStyleSheet("color: #666; font-size: 13px;")
+            self._status_text.setStyleSheet("color: #999; font-size: 14px;")
 
     # ------------------------------------------------------------------
     # Bot lifecycle
@@ -264,15 +273,24 @@ class ConfigApp(QMainWindow):
         self._hotkeys_mgr.start()
         self._engine.start()
 
+        # Start auto-detection if enabled
+        if self._config.get("detection", {}).get("enabled", False):
+            from modules.detection import DetectionEngine
+            self._detection_engine = DetectionEngine(
+                self._config,
+                on_detected=self._on_grenade_detected,
+            )
+            self._detection_engine.start()
+
         self._bot_running = True
         self._launch_btn.setText("■  Stop")
         self._launch_btn.setStyleSheet(
             "background: #4a1a1a; color: #ff4444; border: none; "
-            "padding: 5px 16px; font-family: Consolas; font-size: 13px; font-weight: bold;"
+            "padding: 5px 16px; font-family: Consolas; font-size: 14px; font-weight: bold;"
         )
         self._status_dot.setStyleSheet("color: #44ff88; font-size: 16px;")
         self._status_text.setText("Running")
-        self._status_text.setStyleSheet("color: #44ff88; font-size: 13px;")
+        self._status_text.setStyleSheet("color: #44ff88; font-size: 14px;")
 
     def _stop_bot(self):
         if self._engine:
@@ -281,20 +299,23 @@ class ConfigApp(QMainWindow):
             self._hotkeys_mgr.stop()
         if self._overlay_win:
             self._overlay_win.stop()
+        if self._detection_engine:
+            self._detection_engine.stop()
 
-        self._engine       = None
-        self._hotkeys_mgr  = None
-        self._overlay_win  = None
-        self._bot_running  = False
+        self._engine            = None
+        self._hotkeys_mgr       = None
+        self._overlay_win       = None
+        self._detection_engine  = None
+        self._bot_running       = False
 
         self._launch_btn.setText("▶  Launch")
         self._launch_btn.setStyleSheet(
             "background: #1a4a1a; color: #44ff88; border: none; "
-            "padding: 5px 16px; font-family: Consolas; font-size: 13px; font-weight: bold;"
+            "padding: 5px 16px; font-family: Consolas; font-size: 14px; font-weight: bold;"
         )
-        self._status_dot.setStyleSheet("color: #444; font-size: 16px;")
+        self._status_dot.setStyleSheet("color: #777; font-size: 16px;")
         self._status_text.setText("Bot not running")
-        self._status_text.setStyleSheet("color: #666; font-size: 13px;")
+        self._status_text.setStyleSheet("color: #999; font-size: 14px;")
 
     # ------------------------------------------------------------------
     # Hotkey callbacks
@@ -319,6 +340,20 @@ class ConfigApp(QMainWindow):
             self._engine.on_dark_missed()
 
     # ------------------------------------------------------------------
+    # Auto-detection callback
+    # ------------------------------------------------------------------
+
+    def _on_grenade_detected(self, is_splendid: bool):
+        """Called from DetectionEngine background thread when icon is matched."""
+        if not self._engine:
+            return
+        status = self._engine.get_status()
+        player = status.get("current_player", "Unknown")
+        kind = "Splendid Dark" if is_splendid else "Dark"
+        print(f"[Detection] Auto-confirmed: {player} ({kind})")
+        self._engine.on_dark_detected(player, is_splendid=is_splendid)
+
+    # ------------------------------------------------------------------
     # Engine event handler
     # ------------------------------------------------------------------
 
@@ -341,6 +376,29 @@ class ConfigApp(QMainWindow):
             self._overlay_win.set_status_message("Rotation complete", "#aaaaaa")
         elif event_type == "cooldown_skip" and self._overlay_win:
             self._overlay_win.set_status_message(f"{data['player']} on cooldown", "#ffaa00")
+
+        # Pause detection during buff countdown, resume when next player window starts
+        if self._detection_engine:
+            if event_type == "confirmed":
+                self._detection_engine.pause()
+            elif event_type in ("announce", "missed", "cooldown_skip"):
+                self._detection_engine.resume()
+
+    # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Detection region selector
+    # ------------------------------------------------------------------
+
+    def _handle_region_selector(self):
+        from modules.region_selector import RegionSelectorWindow
+        self._region_selector = RegionSelectorWindow()
+        self._region_selector.region_selected.connect(self._on_region_selected)
+        self._region_selector.show()
+
+    def _on_region_selected(self, rel_x: int, rel_y: int, w: int, h: int):
+        """Fills spinboxes with drawn region — user still clicks Apply to save."""
+        self._overlay_tab.set_detection_region(rel_x, rel_y, w, h)
+        print(f"[Detection] Region drawn: rel_x={rel_x} rel_y={rel_y} w={w} h={h}")
 
     # ------------------------------------------------------------------
     # Overlay auto-save position
