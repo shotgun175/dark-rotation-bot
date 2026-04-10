@@ -16,8 +16,11 @@ import tempfile
 import asyncio
 import threading
 
-_BASE_DIR = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) \
-            else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if getattr(sys, "frozen", False):
+    _exe_dir = os.path.dirname(sys.executable)
+    _BASE_DIR = os.path.dirname(_exe_dir) if os.path.basename(_exe_dir).lower() == "dist" else _exe_dir
+else:
+    _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 CHIME_PATH = os.path.join(_BASE_DIR, "assets", "sounds", "dark_confirmed.mp3")
 
@@ -33,6 +36,7 @@ EVENT_TO_CUE = {
     "warning":           "warning",
     "confirmed":         "confirmed",
     "rotation_complete": "rotation_complete",
+    "reset":             "reset",
 }
 
 # ------------------------------------------------------------------
@@ -185,8 +189,9 @@ class AudioManager:
                 (f"{player}, get ready",   self._make_key(voice, "warning",  player)),
             ]
         phrases += [
-            ("Dark confirmed",  self._make_key(voice, "confirmed",         "")),
-            ("All darks used",  self._make_key(voice, "rotation_complete", "")),
+            ("Dark confirmed",        self._make_key(voice, "confirmed",         "")),
+            ("All darks used",        self._make_key(voice, "rotation_complete", "")),
+            ("Dark rotation reset",   self._make_key(voice, "reset",             "")),
         ]
 
         # Only render clips not already in cache

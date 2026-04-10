@@ -2,7 +2,7 @@ audio:
   cues:
     announce: true
     chime: true
-    confirmed: false
+    confirmed: true
     rotation_complete: true
     warning: true
   enabled: true
@@ -18,19 +18,19 @@ detection:
   width: 281
 gui:
   position:
-    x: 7
-    y: 842
+    x: 14
+    y: 804
 hotkeys:
   confirm: f9
   missed: f10
-  quit: f11
+  reset: f11
   start_stop: f8
 overlay:
   font_size: 16
   height: 230
   opacity: 1.0
   position:
-    x: 10
+    x: 12
     y: 2650
   width: 320
 rotation:

@@ -151,7 +151,13 @@ class OverlayWindow(QWidget):
             print(f"[Overlay] Render error: {e}")
 
     def _render(self, status: dict):
-        self._lbl_state.setText(status.get("state", "IDLE"))
+        state = status.get("state", "IDLE")
+        if state == "PAUSED":
+            self._lbl_state.setText("⏸ PAUSED")
+            self._lbl_state.setStyleSheet("color: #ffaa00; background-color: transparent;")
+        else:
+            self._lbl_state.setText(state)
+            self._lbl_state.setStyleSheet(f"color: {TEXT_SECONDARY}; background-color: transparent;")
 
         current = status.get("current_player", "—")
         current_count = status.get("current_count", "")

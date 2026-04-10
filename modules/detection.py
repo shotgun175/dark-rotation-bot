@@ -17,7 +17,11 @@ import numpy as np
 import mss
 
 import sys as _sys
-BASE_DIR = os.path.dirname(_sys.executable) if getattr(_sys, "frozen", False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if getattr(_sys, "frozen", False):
+    _exe_dir = os.path.dirname(_sys.executable)
+    BASE_DIR = os.path.dirname(_exe_dir) if os.path.basename(_exe_dir).lower() == "dist" else _exe_dir
+else:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "assets", "templates")
 
 DARK_TEMPLATE_PATH      = os.path.join(TEMPLATE_DIR, "dark_grenade.png")
@@ -115,6 +119,32 @@ class DetectionEngine:
     def resume(self):
         """Call when next player window starts."""
         self._paused = False
+
+    def check_now(self) -> tuple[bool, bool]:
+        """One-shot synchronous scan. Returns (dark_found, is_splendid)."""
+        try:
+            with mss.mss() as sct:
+                win_pos = _find_lostark_window()
+                if win_pos is None:
+                    return False, False
+                win_x, win_y = win_pos
+                region = {
+                    "left":   win_x + self.rel_x,
+                    "top":    win_y + self.rel_y,
+                    "width":  self.width,
+                    "height": self.height,
+                }
+                shot = sct.grab(region)
+                frame = np.array(shot)
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGRA2GRAY)
+                if self._match(gray, self._splendid_tmpl):
+                    return True, True
+                if self._match(gray, self._dark_tmpl):
+                    return True, False
+                return False, False
+        except Exception as e:
+            print(f"[Detection] check_now error: {e}")
+            return False, False
 
     def update_config(self, config: dict):
         self._config = config

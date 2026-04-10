@@ -25,10 +25,11 @@ class AudioTab(QWidget):
             confirmed=cues.get("confirmed", True),
             rotation_complete=cues.get("rotation_complete", True),
             chime=cues.get("chime", True),
+            reset=cues.get("reset", True),
         )
 
     def _build_ui(self, enabled, voice, volume,
-                  announce, warning, confirmed, rotation_complete, chime):
+                  announce, warning, confirmed, rotation_complete, chime, reset):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(14)
@@ -97,7 +98,8 @@ class AudioTab(QWidget):
             ("announce",          announce,          "[Player], throw dark",        "— on player window open"),
             ("warning",           warning,           "[Player], get ready",         "— before player window closes"),
             ("confirmed",         confirmed,         "Dark confirmed",               "— on manual F9"),
-            ("rotation_complete", rotation_complete, "All darks used",              "— when rotation ends"),
+            ("rotation_complete", rotation_complete, "All darks used",              "— when rotation ends and all players have used their darks"),
+            ("reset",             reset,             "Dark rotation reset",          "— on F11 reset to start a fresh rotation"),
             ("chime",             chime,             "Chime - Auto Dark detection", "— chime when dark is auto-detected (toggle detection in Overlay tab)"),
         ]
         for key, checked, label, hint in cue_rows:

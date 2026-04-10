@@ -19,7 +19,11 @@ from modules.tabs.audio_tab import AudioTab
 from modules.roster import RosterManager
 
 import sys as _sys
-BASE_DIR = os.path.dirname(_sys.executable) if getattr(_sys, "frozen", False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if getattr(_sys, "frozen", False):
+    _exe_dir = os.path.dirname(_sys.executable)
+    BASE_DIR = os.path.dirname(_exe_dir) if os.path.basename(_exe_dir).lower() == "dist" else _exe_dir
+else:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class ConfigApp(QMainWindow):
@@ -281,7 +285,7 @@ class ConfigApp(QMainWindow):
                 "start_stop": self._hotkey_start_stop,
                 "confirm":    self._hotkey_confirm,
                 "missed":     self._hotkey_missed,
-                "quit":       self.close,
+                "reset":      self._hotkey_reset,
             },
         )
         self._hotkeys_mgr.start()
@@ -355,17 +359,29 @@ class ConfigApp(QMainWindow):
     # ------------------------------------------------------------------
 
     def _hotkey_start_stop(self):
-        if self._engine:
-            from modules.engine import RotationState
-            if self._engine.state == RotationState.RUNNING:
-                self._engine.stop()
-            else:
-                self._engine.start()
-                if self._detection_engine:
+        if not self._engine:
+            return
+        from modules.engine import RotationState
+        state = self._engine.state
+        if state == RotationState.RUNNING:
+            self._engine.pause()
+            if self._detection_engine:
+                self._detection_engine.pause()
+        elif state == RotationState.PAUSED:
+            dark_found, is_splendid = False, False
+            if self._detection_engine:
+                dark_found, is_splendid = self._detection_engine.check_now()
+            self._engine.resume(dark_detected=dark_found, is_splendid=is_splendid)
+            if self._detection_engine:
+                if dark_found:
+                    self._detection_engine.pause()
+                else:
                     self._detection_engine.resume()
-                self._status_dot.setStyleSheet("color: #44ff88; font-size: 16px;")
-                self._status_text.setText("Running")
-                self._status_text.setStyleSheet("color: #44ff88; font-size: 14px;")
+        else:
+            # IDLE / STOPPED — first start after launch
+            self._engine.start()
+            if self._detection_engine:
+                self._detection_engine.resume()
 
     def _hotkey_confirm(self):
         if self._engine:
@@ -377,6 +393,12 @@ class ConfigApp(QMainWindow):
     def _hotkey_missed(self):
         if self._engine:
             self._engine.on_dark_missed()
+
+    def _hotkey_reset(self):
+        if self._engine:
+            self._engine.reset()
+            if self._detection_engine:
+                self._detection_engine.pause()
 
     # ------------------------------------------------------------------
     # Auto-detection callback
@@ -402,6 +424,25 @@ class ConfigApp(QMainWindow):
         self._engine_event_signal.emit(event_type, data)
 
     def _on_engine_event_ui(self, event_type: str, data: dict):
+        if event_type == "state_change":
+            new_state = data.get("state", "")
+            if new_state == "PAUSED":
+                self._status_dot.setStyleSheet("color: #ffaa00; font-size: 16px;")
+                self._status_text.setText("Paused  —  press F8 to resume")
+                self._status_text.setStyleSheet("color: #ffaa00; font-size: 14px;")
+            elif new_state == "RUNNING":
+                self._status_dot.setStyleSheet("color: #44ff88; font-size: 16px;")
+                self._status_text.setText("Running")
+                self._status_text.setStyleSheet("color: #44ff88; font-size: 14px;")
+            elif new_state == "IDLE":
+                self._status_dot.setStyleSheet("color: #ffaa00; font-size: 16px;")
+                self._status_text.setText("Armed  —  press F8 to start")
+                self._status_text.setStyleSheet("color: #ffaa00; font-size: 14px;")
+            return
+
+        if event_type == "reset" and self._overlay_win:
+            self._overlay_win.set_status_message("Rotation reset", "#88ccff")
+
         if event_type == "confirmed" and self._overlay_win:
             self._overlay_win.flash("#1a4a1a")
             self._overlay_win.set_status_message(f"OK {data['player']} confirmed", "#44ff88")

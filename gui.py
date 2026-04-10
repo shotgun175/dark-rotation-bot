@@ -19,8 +19,13 @@ try:
 except Exception:
     pass
 
-# When frozen as .exe, use the exe's directory. When running as script, use this file's directory.
-BASE_DIR = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
+# When frozen as .exe, use the exe's directory (step up if inside a dist/ folder).
+# When running as script, use this file's directory.
+if getattr(sys, "frozen", False):
+    _exe_dir = os.path.dirname(sys.executable)
+    BASE_DIR = os.path.dirname(_exe_dir) if os.path.basename(_exe_dir).lower() == "dist" else _exe_dir
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def main():

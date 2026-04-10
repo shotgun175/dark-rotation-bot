@@ -17,7 +17,10 @@ overlay and configurable hotkeys. Confirms throws manually via hotkey.
 - GUI window position also saves and restores on next launch
 - Optional OpenCV auto-detection: scans boss debuff bar for Dark / Splendid Dark Grenade icon and auto-confirms with correct timer (20s / 25s)
 - Detection region configurable via manual spinboxes or drag-to-draw tool in the Overlay tab
-- `Dark Timer.exe` ships with the Splendid Dark Grenade as its icon
+- **Pause / Resume (F8):** freeze the rotation mid-fight; on resume, scans for an active dark and either restarts the buff countdown or advances to the next player
+- **Reset (F11):** clears all throw counts and returns to player 1 in an armed-but-not-started state, without closing the overlay
+- TTS audio cues for all key events including reset confirmation
+- `Dark Rotation Manager.exe` ships with the Splendid Dark Grenade as its icon
 
 ---
 
@@ -58,10 +61,10 @@ then **▶ Launch** to arm the bot (overlay appears, audio pre-renders), then pr
 
 | Key | Action |
 |-----|--------|
-| F8  | Start / Stop rotation |
+| F8  | Start → Pause → Resume rotation |
 | F9  | Confirm dark thrown (starts 20–25 s buff countdown) |
 | F10 | Dark missed (counts toward throw limit, advances to next player) |
-| F11 | Quit |
+| F11 | Reset rotation to player 1 (armed but not started) |
 
 Rebind any key in the GUI under the **Hotkeys** tab, or directly in `config.yaml`.
 
@@ -81,6 +84,9 @@ Rebind any key in the GUI under the **Hotkeys** tab, or directly in `config.yaml
 5. Press **F10** if a player misses — counts the miss and advances to next player
 6. Players on cooldown are skipped automatically
 7. Once every player hits `max_throws_per_run`, the rotation ends
+8. **Pause / Resume — F8 (while running):** freezes the overlay and stops the timer. On resume, the bot scans for an active dark grenade — if found, restarts the buff countdown; if not, advances to the next player
+9. **Reset — F11:** clears all throw counts, returns to player 1, and returns to the armed state. Press **F8** to start again. The overlay stays visible; a TTS cue confirms the reset
+10. **Stop — overlay ■ button:** tears down the bot entirely and restores the GUI
 
 ---
 
@@ -97,7 +103,7 @@ hotkeys:
   start_stop: f8
   confirm: f9
   missed: f10
-  quit: f11
+  reset: f11
 
 overlay:
   position: {x: 0, y: 0}       # auto-saved when you drag the overlay
@@ -118,11 +124,11 @@ To create a double-clickable executable (no terminal, no Python required):
 
 ```bash
 pip install pyinstaller
-pyinstaller --noconsole --onefile --icon=assets/icon.ico --name="Dark Timer" --clean --hidden-import=edge_tts --hidden-import=aiohttp gui.py
+pyinstaller --noconsole --onefile --icon=assets/icon.ico --name="Dark Rotation Manager" --clean --hidden-import=edge_tts --hidden-import=aiohttp gui.py
 ```
 
-Output: `dist/Dark Timer.exe` — move it to the project root. Re-run this command any time you update the code.
-`config.yaml`, `rosters/`, and `assets/` stay as live files next to the `.exe`.
+Output: `dist/Dark Rotation Manager.exe` — run it directly from the `dist/` folder. Re-run this command any time you update the code.
+`config.yaml`, `rosters/`, and `assets/` are read from the project root automatically.
 
 ---
 
@@ -140,6 +146,13 @@ MIT
 ---
 
 ## Changelog
+
+### v1.0.14 - Pause, reset, and path fixes
+- **F8 pause / resume:** pressing F8 while running now pauses the rotation (overlay shows ⏸ PAUSED, bar freezes). Press F8 again to resume — the bot scans for an active dark grenade and either restarts the buff countdown or advances to the next player
+- **F11 reset:** clears all throw counts and returns to player 1 in the armed-but-not-started state without closing the overlay. TTS announces "Dark rotation reset" as confirmation
+- **Overlay stop button** is now the only way to fully shut down and restore the GUI
+- **Audio:** new "Dark rotation reset" TTS cue (toggleable in Audio tab)
+- **Path fix:** exe running from `dist/` now correctly resolves `config.yaml`, `rosters/`, and `assets/` from the project root
 
 ### v1.0.13 - Rename to Dark Rotation Manager
 - Project renamed from **Dark Rotation Bot** to **Dark Rotation Manager**

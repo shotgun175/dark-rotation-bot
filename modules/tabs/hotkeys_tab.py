@@ -7,10 +7,10 @@ from PyQt5.QtWidgets import (
 )
 
 ACTIONS = [
-    ("start_stop", "Start / Stop rotation",  "Toggle the rotation on and off"),
+    ("start_stop", "Start / Pause rotation",  "Start, pause, or resume the rotation"),
     ("confirm",    "Confirm dark thrown",      "Starts the 20–25s buff countdown"),
     ("missed",     "Dark missed",              "Counts miss, advances to next player"),
-    ("quit",       "Quit",                     "Stops the bot and exits"),
+    ("reset",      "Reset rotation",           "Restart from player 1, clear all counts"),
 ]
 
 _STYLE_NORMAL   = ("background: #111; color: #ffd700; border: 1px solid #444; "

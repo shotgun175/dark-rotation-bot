@@ -25,7 +25,7 @@ class HotkeyManager:
             "start_stop": self.config.get("start_stop", "f8"),
             "confirm":    self.config.get("confirm",    "f9"),
             "missed":     self.config.get("missed",     "f10"),
-            "quit":       self.config.get("quit",       "f11"),
+            "reset":      self.config.get("reset",      "f11"),
         }
 
         for action, key in mappings.items():
